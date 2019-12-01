@@ -1,0 +1,25 @@
+
+[Process Name]
+Explorer.exe=0
+devenv.exe=0
+SkypeApp.exe=1
+wing.exe=0
+x32dbg.exe=0
+x64dbg.exe=0
+Zalo.exe=1
+Code.exe=0
+WinStore.App.exe=0
+notepad.exe=0
+
+[Window Name]
+Sublime Text=0
+
+[Window Class]
+ApplicationFrameWindow=1
+CabinetWClass=0
+OllyDbg=0
+
+[Options]
+a=1
+b=2
+c=3
