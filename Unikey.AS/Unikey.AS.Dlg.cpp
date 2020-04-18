@@ -207,30 +207,36 @@ void CUnikeyASDlg::OnBnClickedOk()
 
 void CUnikeyASDlg::OnBnClickedOption()
 {
-  int response = AfxMessageBox(IDS_ASK_FOR_RELOAD, MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
+  int response = AfxMessageBox(IDS_OPTIONS, MB_ICONQUESTION | MB_YESNOCANCEL | MB_DEFBUTTON3);
   if (response == IDNO)
   {
-    return;
-  }
-
-  bool state = m_StateToggleButtonED;
-  m_StateToggleButtonED = false;
-  this->UpdateToggleButtonED();
-  {
-    if (m_pUnikeyNT->LoadFilterList(m_CfgPath) != 0)
+    bool state = m_StateToggleButtonED;
+    m_StateToggleButtonED = false;
+    this->UpdateToggleButtonED();
     {
-      CString text;
-      text.LoadString(IDS_CONFIG_FILE_LOAD_FAILED);
-      vu::Box(this->GetSafeHwnd(), MB_ICONERROR, m_AppName.c_str(), text.GetBuffer(), m_CfgPath.c_str());
+      if (m_pUnikeyNT->LoadFilterList(m_CfgPath) != 0)
+      {
+        CString text;
+        text.LoadString(IDS_CONFIG_FILE_LOAD_FAILED);
+        vu::Box(this->GetSafeHwnd(), MB_ICONERROR, m_AppName.c_str(), text.GetBuffer(), m_CfgPath.c_str());
+      }
     }
+    m_StateToggleButtonED = state;
+    this->UpdateToggleButtonED();
   }
-  m_StateToggleButtonED = state;
-  this->UpdateToggleButtonED();
+  else if (response == IDYES)
+  {
+    ShellExecute(this->GetSafeHwnd(), _T("open"), _T("notepad.exe"), m_CfgPath.c_str(), nullptr, SW_SHOWNORMAL);
+  }
+  else
+  {
+    // DO NOTHING
+  }
 }
 
 int CUnikeyASDlg::Initialize()
 {
-  m_AppTitle = vu::LoadResourceString(IDS_APP_NAME);
+  m_AppTitle = vu::LoadRCString(IDS_APP_NAME);
   m_AppPath  = vu::GetCurrentFilePath();
   m_AppName  = vu::ExtractFileName(m_AppPath, false);
   m_AppDir   = vu::ExtractFilePath(m_AppPath);
