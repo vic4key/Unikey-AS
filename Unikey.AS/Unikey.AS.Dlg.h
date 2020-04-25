@@ -89,4 +89,20 @@ private:
   int  TrayInitialize();
   void TrayDestroy();
   void CenterWindow();
+
+  int MessageBox(
+    const HWND hwnd,
+    const std::wstring& content,
+    const UINT icon,
+    const TASKDIALOG_BUTTON* pbuttons,
+    const UINT nbuttons,
+    const UINT buttondef = 0);
+
+  int MessageBox(
+    const HWND hwnd,
+    const UINT content,
+    const UINT icon,
+    const TASKDIALOG_BUTTON* pbuttons,
+    const UINT nbuttons,
+    const UINT buttondef = 0);
 };

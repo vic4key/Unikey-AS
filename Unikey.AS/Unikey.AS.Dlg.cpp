@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "afxdialogex.h"
+#include <afxtaskdialog.h>
 #include "Unikey.AS.h"
 #include "Unikey.AS.Dlg.h"
 
@@ -218,7 +219,15 @@ void CUnikeyASDlg::OnBnClickedOk()
 
 void CUnikeyASDlg::OnBnClickedOption()
 {
-  int response = AfxMessageBox(IDS_OPTIONS, MB_ICONQUESTION | MB_YESNOCANCEL | MB_DEFBUTTON3);
+  TASKDIALOG_BUTTON buttons[] =
+  {
+    { IDYES, L"Edit" },
+    { IDNO, L"Reload" },
+    { IDCANCEL, L"Cancel" },
+  };
+
+  int response = MessageBox(
+    this->GetSafeHwnd(), IDS_OPTIONS, MB_ICONQUESTION, buttons, _countof(buttons), IDCANCEL);
   if (response == IDNO)
   {
     bool state = m_StateToggleButtonED;
@@ -568,4 +577,86 @@ void CUnikeyASDlg::CenterWindow()
     size.cy,
     IsWindowVisible() ? SWP_SHOWWINDOW : SWP_HIDEWINDOW
   );
+}
+
+int CUnikeyASDlg::MessageBox(
+  const HWND hwnd,
+  const std::wstring& content,
+  const UINT icon,
+  const TASKDIALOG_BUTTON* pbuttons,
+  const UINT nbuttons,
+  const UINT buttondef)
+{
+  if (pbuttons == nullptr || nbuttons == 0)
+  {
+    return 0;
+  }
+
+  PCWSTR picon = nullptr;
+  HICON  hicon = nullptr;
+
+  switch (icon)
+  {
+  case MB_ICONERROR:
+    picon = TD_ERROR_ICON;
+    break;
+
+  case MB_ICONQUESTION:
+    hicon = LoadIcon(nullptr, IDI_QUESTION);
+    break;
+
+  case MB_ICONWARNING:
+    picon = TD_WARNING_ICON;
+    break;
+
+  case MB_ICONINFORMATION:
+    picon = TD_INFORMATION_ICON;
+    break;
+
+  default:
+    break;
+  }
+
+  TASKDIALOGCONFIG tdc = { 0 };
+  tdc.cbSize = sizeof(tdc);
+  tdc.hInstance  = nullptr;
+  tdc.hwndParent = hwnd,
+  tdc.pszContent = content.c_str();
+  if (picon != nullptr)
+  {
+    tdc.pszMainIcon = picon;
+  }
+  else if (hicon != nullptr)
+  {
+    tdc.dwFlags |= TDF_USE_HICON_MAIN;
+    tdc.hMainIcon = hicon;
+  }
+  tdc.pButtons = pbuttons;
+  tdc.cButtons = nbuttons;
+  if (buttondef != 0)
+  {
+    tdc.nDefaultButton = buttondef;
+  }
+
+  int button = 0;
+
+  HRESULT result = TaskDialogIndirect(&tdc, &button, nullptr, nullptr);
+  if (result != S_OK)
+  {
+    return 0;
+  }
+
+  return button;
+}
+
+int CUnikeyASDlg::MessageBox(
+  const HWND hwnd,
+  const UINT content,
+  const UINT icon,
+  const TASKDIALOG_BUTTON* pbuttons,
+  const UINT nbuttons,
+  const UINT buttondef)
+{
+  auto s = vu::LoadRCStringW(content);
+  return MessageBox(hwnd, s, icon, pbuttons, nbuttons, buttondef);
 }
