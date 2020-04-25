@@ -20,6 +20,7 @@ public:
   enum { IDD = IDD_UNIKEYSWITCHER_DIALOG };
 
 protected:
+  virtual BOOL OnInitDialog();
   virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
   // Implementation
@@ -34,7 +35,6 @@ protected:
   CBitmap m_EN, m_VN;
 
   // Generated message map functions
-  virtual BOOL OnInitDialog();
   afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
   afx_msg void OnPaint();
   afx_msg HCURSOR OnQueryDragIcon();

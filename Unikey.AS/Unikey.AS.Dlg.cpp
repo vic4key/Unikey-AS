@@ -139,6 +139,11 @@ BOOL CUnikeyASDlg::OnInitDialog()
   GetIconInfoEx(m_hIcon, &icon);
   m_ModeIcon.SetBitmap(icon.hbmColor);
 
+  SetWindowLongPtr(
+    this->GetSafeHwnd(),
+    GWL_STYLE,
+    GetWindowLongPtr(this->GetSafeHwnd(), GWL_STYLE) & ~WS_THICKFRAME);
+
   Setup();
 
   return TRUE;  // return TRUE  unless you set the focus to a control
