@@ -222,9 +222,9 @@
     <None Include="res\Unikey.AS.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\accept.bmp" />
-    <Image Include="res\create.bmp" />
+    <Image Include="res\EN.bmp" />
     <Image Include="res\Unikey.AS.ico" />
+    <Image Include="res\VN.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

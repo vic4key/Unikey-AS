@@ -28,7 +28,7 @@ protected:
   BOOL m_TopMost;
   BOOL m_ForceMode;
   CStatic m_ModeIcon;
-  CString m_ActiveWindowName;
+  CString m_Status;
   CButton m_SwitchMode;
   CButton m_ToggleButtonED;
   CBitmap m_EN, m_VN;

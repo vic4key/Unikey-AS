@@ -52,13 +52,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\accept.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\create.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\Unikey.AS.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\VN.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\EN.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

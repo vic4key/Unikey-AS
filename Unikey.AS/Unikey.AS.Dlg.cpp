@@ -65,7 +65,7 @@ END_MESSAGE_MAP()
 
 CUnikeyASDlg::CUnikeyASDlg(CWnd* pParent /*=NULL*/)
   : CDialogEx(CUnikeyASDlg::IDD, pParent)
-  , m_ActiveWindowName(_T(""))
+  , m_Status(_T(""))
   , m_ForceMode(FALSE)
   , m_TopMost(FALSE)
   , m_StateToggleButtonED(true)
@@ -73,14 +73,15 @@ CUnikeyASDlg::CUnikeyASDlg(CWnd* pParent /*=NULL*/)
   , m_pUnikeyNT(nullptr)
   , m_ModeState(CUnikeyNT::eMode::MODE_COUNT)
 {
+  AfxInitRichEdit2();
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void CUnikeyASDlg::DoDataExchange(CDataExchange* pDX)
 {
   __super::DoDataExchange(pDX);
-  DDX_Text(pDX, IDC_ACTIVE_WINDOW, m_ActiveWindowName);
-  DDV_MaxChars(pDX, m_ActiveWindowName, 255);
+  DDX_Text(pDX, IDC_ACTIVE_WINDOW, m_Status);
+  DDV_MaxChars(pDX, m_Status, 255);
   DDX_Control(pDX, IDC_MODE_ICON, m_ModeIcon);
   DDX_Check(pDX, IDC_FORCE_MODE, m_ForceMode);
   DDX_Check(pDX, IDC_TOP_MOST, m_TopMost);
@@ -132,6 +133,11 @@ BOOL CUnikeyASDlg::OnInitDialog()
   //  when the application's main window is not a dialog
   SetIcon(m_hIcon, TRUE);			// Set big icon
   SetIcon(m_hIcon, FALSE);		// Set small icon
+
+  ICONINFOEX icon;
+  icon.cbSize = sizeof(icon);
+  GetIconInfoEx(m_hIcon, &icon);
+  m_ModeIcon.SetBitmap(icon.hbmColor);
 
   Setup();
 
@@ -285,7 +291,7 @@ void CUnikeyASDlg::Setup()
   {
     m_Timer = 0;
 
-    m_ForceMode = FALSE;
+    m_ForceMode = TRUE;
     m_TopMost = TRUE;
 
     m_EN.LoadBitmap(IDB_EN);
@@ -299,7 +305,7 @@ void CUnikeyASDlg::Setup()
 
     this->CenterWindow();
 
-    this->GetWindowTextW(m_ActiveWindowName);
+    this->GetWindowTextW(m_Status);
   }
   this->UpdateData(FALSE);
 }
@@ -313,10 +319,46 @@ void CUnikeyASDlg::OnTimer(UINT_PTR nIDEvent)
   auto pActiveWindow = this->GetForegroundWindow();
   if (pActiveWindow != m_pActiveWindow && (m_pActiveWindow = pActiveWindow) != nullptr)
   {
-    auto nSize = pActiveWindow->GetWindowTextLength();
-    if (nSize <= MAXBYTE) m_pActiveWindow->GetWindowTextW(m_ActiveWindowName);
-    else m_ActiveWindowName = L"<Error String Too Long>";
-    this->UpdateData(FALSE);
+    CString theWindowName = _T("");
+    int nSize = pActiveWindow->GetWindowTextLength();
+    if (nSize > 0)
+    {
+      m_pActiveWindow->GetWindowTextW(theWindowName);
+    }
+
+    CString theWindowClass = _T("");
+    {
+      wchar_t s[MAXBYTE] = { 0 };
+      nSize = GetClassNameW(m_pActiveWindow->GetSafeHwnd(), s, MAXBYTE);
+      if (nSize > 0)
+      {
+        theWindowClass = s;
+      }
+    }
+
+    CString theProcessName = _T("");
+    {
+      DWORD pid = 0;
+      GetWindowThreadProcessId(m_pActiveWindow->GetSafeHwnd(), &pid);
+      auto hp = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+      wchar_t s[MAX_PATH] = { 0 };
+      DWORD size = MAX_PATH;
+      QueryFullProcessImageNameW(hp, PROCESS_NAME_NATIVE, s, &size);
+      CloseHandle(hp);
+      theProcessName = PathFindFileNameW(s);
+    }
+
+    if (m_pActiveWindow != this)
+    {
+      m_Status  = _T("");
+      m_Status += theWindowName;
+      m_Status += _T("\n");
+      m_Status += theWindowClass;
+      m_Status += _T("\n");
+      m_Status += theProcessName;
+
+      this->UpdateData(FALSE);
+    }
     changedToOther = true;
   }
 
@@ -344,7 +386,8 @@ void CUnikeyASDlg::OnBnClickedMode()
   if (m_pUnikeyNT.get() == nullptr || !m_pUnikeyNT->IsReady()) return;
 
   m_ModeState = m_pUnikeyNT->GetModeState();
-  m_ModeState = (m_ModeState != CUnikeyNT::eMode::MODE_EN ? CUnikeyNT::eMode::MODE_EN : CUnikeyNT::eMode::MODE_VN);
+  m_ModeState = (m_ModeState != CUnikeyNT::eMode::MODE_EN ?
+    CUnikeyNT::eMode::MODE_EN : CUnikeyNT::eMode::MODE_VN);
 
   m_pUnikeyNT->SwitchMode(m_ModeState);
 
@@ -359,7 +402,7 @@ void CUnikeyASDlg::UpdateSwitchModeButton(bool force)
 
   m_ModeState = force ? m_pUnikeyNT->UpdateModeState() : m_pUnikeyNT->GetModeState();
 
-  m_SwitchMode.SetWindowText(CString(m_EVmode[m_ModeState]));
+  m_SwitchMode.SetBitmap(m_ModeState == CUnikeyNT::eMode::MODE_EN ? m_EN : m_VN);
 }
 
 void CUnikeyASDlg::OnDestroy()
