@@ -82,7 +82,6 @@ void CUnikeyASDlg::DoDataExchange(CDataExchange* pDX)
 {
   __super::DoDataExchange(pDX);
   DDX_Text(pDX, IDC_ACTIVE_WINDOW, m_Status);
-  DDV_MaxChars(pDX, m_Status, 255);
   DDX_Control(pDX, IDC_MODE_ICON, m_ModeIcon);
   DDX_Check(pDX, IDC_FORCE_MODE, m_ForceMode);
   DDX_Check(pDX, IDC_TOP_MOST, m_TopMost);
@@ -259,7 +258,7 @@ int CUnikeyASDlg::Initialize()
   m_AppTitle = vu::LoadRCString(IDS_APP_NAME);
   m_AppPath  = vu::GetCurrentFilePath();
   m_AppName  = vu::ExtractFileName(m_AppPath, false);
-  m_AppDir   = vu::ExtractFilePath(m_AppPath);
+  m_AppDir   = vu::ExtractFileDirectory(m_AppPath);
              
   m_CfgPath  = m_AppDir + m_AppName + _T(".INI");
 
