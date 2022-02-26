@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Unikey.NT.h"
 
-#include <Psapi.h>
+#include <psapi.h>
 #pragma comment(lib, "psapi.lib")
 
 #include <vector>
