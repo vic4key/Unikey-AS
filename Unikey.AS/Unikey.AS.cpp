@@ -44,7 +44,7 @@ BOOL CUnikeyASApp::InitInstance()
     caption.LoadString(IDS_WARNING);
     text.LoadString(IDS_APP_IS_RUNNING_WARNING);
 
-    int response = vu::Box(
+    int response = vu::msg_box(
       ::GetActiveWindow(),
       MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2,
       caption.GetBuffer(),

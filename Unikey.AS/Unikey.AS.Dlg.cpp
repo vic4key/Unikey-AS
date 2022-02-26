@@ -237,7 +237,7 @@ void CUnikeyASDlg::OnBnClickedOption()
       {
         CString text;
         text.LoadString(IDS_CONFIG_FILE_LOAD_FAILED);
-        vu::Box(this->GetSafeHwnd(), MB_ICONERROR, m_AppName.c_str(), text.GetBuffer(), m_CfgPath.c_str());
+        vu::msg_box(this->GetSafeHwnd(), MB_ICONERROR, m_AppName.c_str(), text.GetBuffer(), m_CfgPath.c_str());
       }
     }
     m_StateToggleButtonED = state;
@@ -255,20 +255,20 @@ void CUnikeyASDlg::OnBnClickedOption()
 
 int CUnikeyASDlg::Initialize()
 {
-  m_AppTitle = vu::LoadRCString(IDS_APP_NAME);
-  m_AppPath  = vu::GetCurrentFilePath();
-  m_AppName  = vu::ExtractFileName(m_AppPath, false);
-  m_AppDir   = vu::ExtractFileDirectory(m_AppPath);
+  m_AppTitle = vu::load_rs_string(IDS_APP_NAME);
+  m_AppPath  = vu::get_current_file_path();
+  m_AppName  = vu::extract_file_name(m_AppPath, false);
+  m_AppDir   = vu::extract_file_directory(m_AppPath);
              
   m_CfgPath  = m_AppDir + m_AppName + _T(".INI");
 
   CString caption, text;
   caption.LoadString(IDS_ERROR);
 
-  if (!vu::IsFileExists(m_CfgPath))
+  if (!vu::is_file_exists(m_CfgPath))
   {
     text.LoadString(IDS_CONFIG_FILE_NOT_FOUND);
-    vu::Box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer(), m_CfgPath.c_str());
+    vu::msg_box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer(), m_CfgPath.c_str());
     return 1;
   }
 
@@ -277,21 +277,21 @@ int CUnikeyASDlg::Initialize()
   if (m_pUnikeyNT.get() == nullptr)
   {
     text.LoadString(IDS_INITIALIZE_HANDLER_FAILED);
-    vu::Box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer());
+    vu::msg_box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer());
     return 2;
   }
 
   if (m_pUnikeyNT->Initialize() != 0)
   {
     text.LoadString(IDS_INITIALIZE_FAILED);
-    vu::Box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer());
+    vu::msg_box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer());
     return 3;
   }
 
   if (m_pUnikeyNT->LoadFilterList(m_CfgPath) != 0)
   {
     text.LoadString(IDS_CONFIG_FILE_LOAD_FAILED);
-    vu::Box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer(), m_CfgPath.c_str());
+    vu::msg_box(this->GetSafeHwnd(), MB_ICONERROR, caption.GetBuffer(), text.GetBuffer(), m_CfgPath.c_str());
     return 4;
   }
 
@@ -656,6 +656,6 @@ int CUnikeyASDlg::MessageBox(
   const UINT nbuttons,
   const UINT buttondef)
 {
-  auto s = vu::LoadRCStringW(content);
+  auto s = vu::load_rs_string(content);
   return MessageBox(hwnd, s, icon, pbuttons, nbuttons, buttondef);
 }

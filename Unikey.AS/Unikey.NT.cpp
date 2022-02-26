@@ -61,7 +61,7 @@ HMODULE CUnikeyNT::GetpBase(const HANDLE processHandle, vu::ulong PID)
   TCHAR targetName[MAX_PATH] = {0};
   if (GetModuleBaseName(processHandle, nullptr, targetName, sizeof(targetName)) == 0) return result;
 
-  auto target = vu::LowerString(targetName);
+  auto target = vu::lower_string(targetName);
   if (target.length() == 0) return result;
 
   HMODULE modules[1024];
@@ -80,9 +80,9 @@ HMODULE CUnikeyNT::GetpBase(const HANDLE processHandle, vu::ulong PID)
       sizeof(modulePath) / sizeof(modulePath[0]))
     ) continue;
 
-    auto moduleName = vu::ExtractFileName(modulePath);
+    auto moduleName = vu::extract_file_name(modulePath);
 
-    auto iter = vu::LowerString(moduleName);
+    auto iter = vu::lower_string(moduleName);
     if (iter == target)
     {
       result = modules[i];
@@ -161,7 +161,7 @@ CUnikeyNT::eMode CUnikeyNT::GetModeState() const
 
 const CUnikeyNT::eMode CUnikeyNT::UpdateModeState()
 {
-  vu::RPMEX(vu::eXBit::x64, m_Handle, LPCVOID(m_AddressOfModeState), &m_ModeState, 1, true, 2, 0, 4);
+  vu::rpm_ex(vu::eXBit::x64, m_Handle, LPCVOID(m_AddressOfModeState), &m_ModeState, 1, true, 2, 0, 4);
   return m_ModeState;
 }
 
@@ -171,10 +171,10 @@ CUnikeyNT::TFilterData CUnikeyNT::ParseFilter(const std::vector<std::tstring>& f
 
   for (auto& e : filter)
   {
-    auto _pair = vu::SplitString(e, _T("="));
+    auto _pair = vu::split_string(e, _T("="));
     if (_pair.size() == 2)
     {
-      auto key = vu::LowerString(_pair.at(0));
+      auto key = vu::lower_string(_pair.at(0));
       auto value = eMode(std::stoi(_pair.at(1)));
       auto item = std::make_pair(key, value);
       result.insert(item);
@@ -186,7 +186,7 @@ CUnikeyNT::TFilterData CUnikeyNT::ParseFilter(const std::vector<std::tstring>& f
 
 int CUnikeyNT::LoadFilterList(const std::tstring& filePath)
 {
-  vu::CINIFile INI(filePath);
+  vu::INIFile INI(filePath);
 
   if (m_Sections.empty()) return 1;
 
@@ -194,7 +194,7 @@ int CUnikeyNT::LoadFilterList(const std::tstring& filePath)
 
   for (auto& section : m_Sections)
   {
-    auto sectionData = INI.ReadSection(section.second, MiB);
+    auto sectionData = INI.read_section(section.second, MiB);
     if (sectionData.empty()) continue;
 
     auto filterData = this->ParseFilter(sectionData);
@@ -231,7 +231,7 @@ CUnikeyNT::TWndInfo CUnikeyNT::GetInfoByWindowHandle(const HWND windowHandle)
   GetClassName(windowHandle, LPTSTR(p.get()), MAXBYTE);
   std::tstring windowClass(std::move(p.get()));
 
-  auto s = vu::TrimString(windowClass);
+  auto s = vu::trim_string(windowClass);
   if (s.length() != 0 && std::all_of(s.cbegin(), s.cend(), [](const TCHAR& v) {
     return ((v >= _T('0') && v <= _T('9')) || (v == _T('#'))); /* Ignore MFC's class name style */
   }))
@@ -268,13 +268,13 @@ CUnikeyNT::eMode CUnikeyNT::Determine(
 
   std::tstring v(_T(""));
 
-  v = vu::LowerString(processName);
+  v = vu::lower_string(processName);
   args.push_back(v);
 
-  v = vu::LowerString(windowName);
+  v = vu::lower_string(windowName);
   args.push_back(v);
 
-  v = vu::LowerString(windowClass);
+  v = vu::lower_string(windowClass);
   args.push_back(v);
 
   for (auto& section : m_FilterList)
@@ -301,8 +301,8 @@ bool CUnikeyNT::CompareString(const std::tstring& s1, const std::tstring& s2, bo
 {
   bool result = false;
 
-  auto _s1 = (trimLR ? vu::TrimString(s1) : s1);
-  auto _s2 = (trimLR ? vu::TrimString(s2) : s2);
+  auto _s1 = (trimLR ? vu::trim_string(s1) : s1);
+  auto _s2 = (trimLR ? vu::trim_string(s2) : s2);
 
   if (_s1.length() == 0 || _s2.length() == 0) return result;
 
