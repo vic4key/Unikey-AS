@@ -12,7 +12,7 @@ Tool này có chức năng rất đơn giản là tự động chuyển kiểu g
 <details>
 <summary>Nhấn để xem ...</summary>
 
-> 1. Tải một phiên bản trên trang web chính thức [unikey.org](https://www.unikey.org/) về giải nén và chạy.
+> 1. Tải một phiên bản trên trang web chính thức https://www.unikey.org/download.html về giải nén và chạy.
 >
 > 2. Tải tool [Unikey AS](https://github.com/vic4key/Unikey-AS/releases) mới nhất về giải nén và chạy.
 >
@@ -20,7 +20,7 @@ Tool này có chức năng rất đơn giản là tự động chuyển kiểu g
 >
 > 4. Ngoài ra
 >> - Force Mode : Nếu tích chọn thì người dùng không thể chuyển kiểu gõ khác. Nếu bỏ tích chọn thì người dùng có thể linh động chuyển kiểu gõ lúc đang focus nhưng lần sau focus lại app thì tool vẫn sẽ tự động chuyển kiểu gõ theo cài đặt.
->> - Top Most : Hiển thị GUI tool trên các app khác.
+>> - Top Most : Luôn hiển thị GUI tool trên các app khác.
 </details>
 
 #### Minh họa
