@@ -50,16 +50,16 @@ BEGIN_MESSAGE_MAP(CUnikeyASDlg, CDialogEx)
   ON_WM_SYSCOMMAND()
   ON_WM_PAINT()
   ON_WM_QUERYDRAGICON()
-  ON_BN_CLICKED(IDOK, &CUnikeyASDlg::OnBnClickedOk)
-  ON_BN_CLICKED(IDC_OPTION, &CUnikeyASDlg::OnBnClickedOption)
+  ON_BN_CLICKED(IDOK, OnBnClickedOk)
+  ON_BN_CLICKED(IDC_OPTION, OnBnClickedOption)
   ON_WM_TIMER()
-  ON_BN_CLICKED(IDC_TOP_MOST, &CUnikeyASDlg::OnBnClickedTopMost)
-  ON_BN_CLICKED(IDC_MODE, &CUnikeyASDlg::OnBnClickedMode)
+  ON_BN_CLICKED(IDC_TOP_MOST, OnBnClickedTopMost)
+  ON_BN_CLICKED(IDC_MODE, OnBnClickedMode)
   ON_WM_DESTROY()
-  ON_MESSAGE(WM_US_TRAY_NOTIFY, &CUnikeyASDlg::OnTrayNotify)
-  ON_COMMAND(ID_MENU_SHOW, &CUnikeyASDlg::OnMenuShowMain)
-  ON_COMMAND(ID_MENU_ABOUT, &CUnikeyASDlg::OnMenuAbout)
-  ON_COMMAND(ID_MENU_EXIT, &CUnikeyASDlg::OnMenuExit)
+  ON_MESSAGE(WM_US_TRAY_NOTIFY, OnTrayNotify)
+  ON_COMMAND(ID_MENU_SHOW, OnMenuShowMain)
+  ON_COMMAND(ID_MENU_ABOUT, OnMenuAbout)
+  ON_COMMAND(ID_MENU_EXIT, OnMenuExit)
   ON_WM_CLOSE()
   ON_WM_CREATE()
 END_MESSAGE_MAP()
@@ -72,7 +72,7 @@ CUnikeyASDlg::CUnikeyASDlg(CWnd* pParent /*=NULL*/)
   , m_StateToggleButtonED(true)
   , m_EVmode(_T("EVX"))
   , m_pUnikeyNT(nullptr)
-  , m_ModeState(CUnikeyNT::eMode::MODE_COUNT)
+  , m_ModeState(CUnikeyNT::eMode::MODE_NA)
 {
   AfxInitRichEdit2();
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -379,7 +379,7 @@ void CUnikeyASDlg::OnTimer(UINT_PTR nIDEvent)
   if (m_ForceMode) m_pUnikeyNT->SwitchMode(mode);
   else if (changedToOther) m_pUnikeyNT->SwitchMode(mode);
 
-  mode = m_pUnikeyNT->UpdateModeState();
+  mode = m_pUnikeyNT->GetModeState();
   if (mode != m_ModeState)
   {
     m_ModeState = mode;
@@ -413,7 +413,7 @@ void CUnikeyASDlg::UpdateSwitchModeButton(bool force)
 {
   if (m_pUnikeyNT == nullptr || !m_pUnikeyNT->IsReady()) return;
 
-  m_ModeState = force ? m_pUnikeyNT->UpdateModeState() : m_pUnikeyNT->GetModeState();
+  m_ModeState = force ? m_pUnikeyNT->GetModeState() : m_pUnikeyNT->GetModeState();
 
   m_SwitchMode.SetBitmap(m_ModeState == CUnikeyNT::eMode::MODE_EN ? m_EN : m_VN);
 }

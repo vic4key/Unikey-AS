@@ -9,160 +9,203 @@
 #include <utility>
 #include <algorithm>
 
-/* Switch Mode
- * $+0      | 48 83 EC 28          | sub rsp,28                                |
- * $+4      | 48:8B0D 65200800     | mov rcx,qword ptr ds:[14009B330]          |
- * $+B      | 33 C0                | xor eax,eax                               |
- * $+D      | 39 41 04             | cmp dword ptr ds:[rcx+4],eax              | <- Mode State
- * $+10     | 0F 94 C0             | sete al                                   |
- * $+13     | 89 41 04             | mov dword ptr ds:[rcx+4],eax              | <- Mode State
- * $+16     | 48:8B05 53200800     | mov rax,qword ptr ds:[14009B330]          |
- * $+1D     | 83 78 08 00          | cmp dword ptr ds:[rax+8],0                |
- * $+21     | 74 05                | je <unikeynt.loc_1400192E8>               |
- * $+23     | E8 E8 EC FF FF       | call <unikeynt.sub_140017FD0>             |
- * $+28     | 48 83 C4 28          | add rsp,28                                |
- * $+2C     | E9 AF F7 FF FF       | jmp <unikeynt.sub_140018AA0>              |
- */
+// Unikey NT
+
+// RC5 64-bit
+// $+0  | 48:83EC 28       | sub rsp,28
+// $+4  | 48:8D0D 9D801000 | lea rcx,qword ptr ds:[140125F28]
+// $+B  | FF15 DF760A00    | call qword ptr ds:[<&RtlEnterCriticalSection>]
+// $+11 | 48:8B05 E0881000 | mov rax,qword ptr ds:[140126778]
+// $+18 | 33D2             | xor edx,edx
+// $+1A | 3910             | cmp dword ptr ds:[rax],edx
+// $+1C | 0F94C2           | sete dl
+// $+1F | 8910             | mov dword ptr ds:[rax],edx
+// $+21 | 48:8B05 D0881000 | mov rax,qword ptr ds:[140126778]
+// $+28 | 8378 04 00       | cmp dword ptr ds:[rax+4],0
+// $+2C | 74 05            | je unikeynt.14001DEB3
+// $+2E | E8 CDEBFFFF      | call <unikeynt.sub_14001CA80>
+// $+33 | E8 18F7FFFF      | call <unikeynt.sub_14001D5D0>
+// $+38 | 48:8D0D 69801000 | lea rcx,qword ptr ds:[140125F28]
+// $+3F | 48:83C4 28       | add rsp,28
+// $+43 | 48:FF25 9E760A00 | jmp qword ptr ds:[<&RtlLeaveCriticalSection>]
+// $+4A | CC               | int3
+
+// RC5 32-bit
+// $+0  | 68 08F64D00      | push unikeynt.4DF608
+// $+5  | FF15 50C24900    | call dword ptr ds:[<&RtlEnterCriticalSection>]
+// $+B  | A1 38FE4D00      | mov eax,dword ptr ds:[4DFE38]
+// $+10 | 33C9             | xor ecx,ecx
+// $+12 | 3908             | cmp dword ptr ds:[eax],ecx
+// $+14 | 0F94C1           | sete cl
+// $+17 | 8908             | mov dword ptr ds:[eax],ecx
+// $+19 | A1 38FE4D00      | mov eax,dword ptr ds:[4DFE38]
+// $+1E | 8378 04 00       | cmp dword ptr ds:[eax+4],0
+// $+22 | 74 05            | je unikeynt.419839
+// $+24 | E8 67EEFFFF      | call <unikeynt.sub_4186A0>
+// $+29 | E8 92F8FFFF      | call <unikeynt.sub_4190D0>
+// $+2E | 68 08F64D00      | push unikeynt.4DF608
+// $+33 | FF15 4CC24900    | call dword ptr ds:[<&RtlLeaveCriticalSection>]
+// $+39 | C3               | ret
+// $+3A | CC               | int3
+
+struct pattern_t
+{
+  vu::arch arch;
+  std::string pattern;
+  vu::ulong position;
+  vu::ulong offset;
+};
+
+static struct
+{
+  vu::ProcessW process;
+  bool         initialized = false;
+  size_t       address_mode_state = 0;
+  size_t       address_change_mode_function = 0;
+  pattern_t    pattern;
+} gUnikeyNT;
+
 
 CUnikeyNT::CUnikeyNT()
 {
-  m_PID     = 0;
-  m_Ready   = false;
-  m_Handle  = INVALID_HANDLE_VALUE;
-  m_ModeState = eMode::MODE_COUNT;
-  m_AddressOfImageBase = 0;
-  m_OffsetOfModeState  = 0;
-  m_AddressOfModeState = 0;
-  m_OffsetOfSwitchModeFunction  = 0;
-  m_AddressOfSwitchModeFunction = 0;
-
   m_Sections.clear();
   m_FilterList.clear();
 
   m_Sections.insert(std::make_pair(eFilterType::FT_PROCESS_NAME, _T("Process Name")));
-  m_Sections.insert(std::make_pair(eFilterType::FT_WINDOW_NAME, _T("Window Name")));
+  m_Sections.insert(std::make_pair(eFilterType::FT_WINDOW_NAME,  _T("Window Name")));
   m_Sections.insert(std::make_pair(eFilterType::FT_WINDOW_CLASS, _T("Window Class")));
 }
 
 CUnikeyNT::~CUnikeyNT()
 {
-  if (!m_Ready) return;
-
-  if (m_Handle != nullptr && m_Handle != INVALID_HANDLE_VALUE)
-  {
-    CloseHandle(m_Handle);
-  }
 }
 
-HMODULE CUnikeyNT::GetpBase(const HANDLE processHandle, vu::ulong PID)
+vu::VUResult CUnikeyNT::Initialize()
 {
-  HMODULE result = 0;
-
-  TCHAR targetName[MAX_PATH] = {0};
-  if (GetModuleBaseName(processHandle, nullptr, targetName, sizeof(targetName)) == 0) return result;
-
-  auto target = vu::lower_string(targetName);
-  if (target.length() == 0) return result;
-
-  HMODULE modules[1024];
-  DWORD cbNeeded;
-  if (!EnumProcessModules(processHandle, modules, sizeof(modules), &cbNeeded)) return result;
-
-  TCHAR modulePath[MAX_PATH];
-  for (int i = 0; i < (cbNeeded / sizeof(modules[0])); i++ )
+  if (gUnikeyNT.initialized)
   {
-    ZeroMemory(&modulePath, sizeof(modulePath));
+    return vu::VU_OK;
+  }
 
-    if (!GetModuleFileNameEx(
-      processHandle,
-      modules[i],
-      modulePath,
-      sizeof(modulePath) / sizeof(modulePath[0]))
-    ) continue;
+  HWND hWnd = FindWindow(_T("UniKey MainWnd"), nullptr);
+  if (hWnd == nullptr)
+  {
+    return __LINE__;
+  }
 
-    auto moduleName = vu::extract_file_name(modulePath);
+  vu::ulong process_id = -1;
+  GetWindowThreadProcessId(hWnd, &process_id);
 
-    auto iter = vu::lower_string(moduleName);
-    if (iter == target)
+  if (!gUnikeyNT.process.attach(process_id))
+  {
+    return __LINE__;
+  }
+
+  auto modules = gUnikeyNT.process.get_modules();
+  if (modules.empty())
+  {
+    return __LINE__;
+  }
+
+  auto& module_exe = modules.at(0); // the first module is always EXE
+  vu::Buffer data(module_exe.modBaseSize);
+  if (!gUnikeyNT.process.read_memory(vu::ulongptr(module_exe.modBaseAddr), data))
+  {
+    return __LINE__;
+  }
+
+  std::vector<pattern_t> patterns;
+  {
+    patterns.push_back({ vu::arch::x86, "68 ?? ?? ?? ?? FF 15 ?? ?? ?? ?? A1 ?? ?? ?? ?? 33 C9 39 08 0F 94 C1 89 08", 0xC, 0x0 });
+    patterns.push_back({ vu::arch::x64, "48 83 EC ?? 48 8D 0D ?? ?? ?? ?? FF 15 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 D2 39 10 0F 94 C2 89 10", 0x14, 0x0 });
+    patterns.push_back({ vu::arch::x64, "48 83 EC ?? 48 8B 0D ?? ?? ?? ?? 33 C0 39 41 ?? 0F 94 C0 89 41 ??", 0x7, 0x4 });
+  }
+
+  std::vector<size_t> result;
+
+  auto it = std::find_if(patterns.cbegin(), patterns.cend(), [&](const pattern_t& pattern) -> bool
+  {
+    if (pattern.arch != gUnikeyNT.process.bit())
     {
-      result = modules[i];
-      break;
+      return false;
     }
+
+    result = vu::find_pattern_A(data, pattern.pattern, true);
+
+    return !result.empty();
+  });
+
+  if (it == patterns.cend() || result.empty())
+  {
+    return __LINE__;
   }
 
-  return result;
+  auto found_offset = result.at(0);
+
+  gUnikeyNT.pattern = *it;
+
+  gUnikeyNT.address_change_mode_function = ULONG_PTR(module_exe.modBaseAddr) + found_offset;
+
+  if (gUnikeyNT.pattern.arch == vu::arch::x64) // 64-bit
+  {
+    gUnikeyNT.address_mode_state = *(DWORD*)(data.get_ptr_bytes() + found_offset + gUnikeyNT.pattern.position);
+    gUnikeyNT.address_mode_state += gUnikeyNT.pattern.position  + 4; // 64-bit relative address
+    gUnikeyNT.address_mode_state += gUnikeyNT.address_change_mode_function;
+  }
+  else // 32-bit
+  {
+    gUnikeyNT.address_mode_state = *(DWORD*)(data.get_ptr_bytes() + found_offset + gUnikeyNT.pattern.position);
+  }
+
+  gUnikeyNT.initialized = true;
+
+  return vu::VU_OK;
 }
 
-int CUnikeyNT::Initialize()
+void CUnikeyNT::SwitchMode(const eMode mode)
 {
-  if (m_Ready) return 0;
+  if (!gUnikeyNT.initialized)
+  {
+    vu::print_A("Unikey NT:error that did not initialize");
+    return;
+  }
 
-  HWND windowHandle = FindWindow(_T("UniKey MainWnd"), nullptr);
-  if (windowHandle == nullptr || windowHandle == INVALID_HANDLE_VALUE) return 1;
+  if (mode == eMode::MODE_NA || mode == this->GetModeState())
+  {
+    return;
+  }
 
-  GetWindowThreadProcessId(windowHandle, &m_PID);
-  if (m_PID == 0 || m_PID == (ULONG)-1) return 2;
-
-  m_Handle = OpenProcess(
-    PROCESS_QUERY_INFORMATION |
-    PROCESS_CREATE_THREAD |
-    PROCESS_VM_READ |
-    PROCESS_VM_WRITE,
-    FALSE,
-    m_PID
-  );
-
-  if (m_Handle == nullptr || m_Handle == INVALID_HANDLE_VALUE) return 1;
-
-  m_AddressOfImageBase = reinterpret_cast<ULONG_PTR>(this->GetpBase(m_Handle, m_PID));
-  m_AddressOfImageBase = (m_AddressOfImageBase == 0 ? 0x140000000 : m_AddressOfImageBase);
-  m_OffsetOfModeState  = 0x9B330;
-  m_OffsetOfSwitchModeFunction = 0x192C0;
-
-  m_AddressOfModeState = m_AddressOfImageBase + m_OffsetOfModeState;
-  m_AddressOfSwitchModeFunction = m_AddressOfImageBase + m_OffsetOfSwitchModeFunction;
-
-  this->UpdateModeState();
-
-  m_Ready = true;
-
-  return 0;
-}
-
-int CUnikeyNT::SwitchMode(const eMode mode)
-{
-  if (!m_Ready) return 1;
-
-  if (mode == eMode::MODE_COUNT) return 2;
-
-  this->UpdateModeState();
-
-  if (mode == m_ModeState) return 0;
-
-  auto threadHandle = CreateRemoteThread(m_Handle, NULL, 0, (LPTHREAD_START_ROUTINE)m_AddressOfSwitchModeFunction, NULL, 0, NULL);
-  if (threadHandle == nullptr || threadHandle == INVALID_HANDLE_VALUE) return 3;
-
-  WaitForSingleObject(threadHandle, INFINITE);
-
-  this->UpdateModeState();
-
-  return 0;
+  gUnikeyNT.process.execute_code_at(gUnikeyNT.address_change_mode_function);
 }
 
 bool CUnikeyNT::IsReady() const
 {
-  return m_Ready;
+  return gUnikeyNT.initialized;
 }
 
 CUnikeyNT::eMode CUnikeyNT::GetModeState() const
 {
-  return m_ModeState;
-}
+  if (!gUnikeyNT.initialized)
+  {
+    vu::print_A("Unikey NT:error that did not initialize");
+    return eMode::MODE_NA;
+  }
 
-const CUnikeyNT::eMode CUnikeyNT::UpdateModeState()
-{
-  vu::rpm_ex(vu::eXBit::x64, m_Handle, LPCVOID(m_AddressOfModeState), &m_ModeState, 1, true, 2, 0, 4);
-  return m_ModeState;
+  eMode mode = eMode::MODE_NA;
+
+  auto succeed = vu::read_memory_ex(
+    gUnikeyNT.process.bit(),
+    gUnikeyNT.process.handle(),
+    LPCVOID(gUnikeyNT.address_mode_state),
+    &mode, sizeof(mode), true, 1, gUnikeyNT.pattern.offset);
+
+  if (!succeed)
+  {
+    vu::print_A("Unikey NT:read mode failed");
+    return eMode::MODE_NA;
+  }
+
+  return mode;
 }
 
 CUnikeyNT::TFilterData CUnikeyNT::ParseFilter(const std::vector<std::tstring>& filter)
@@ -205,15 +248,15 @@ int CUnikeyNT::LoadFilterList(const std::tstring& filePath)
   return 0;
 }
 
-CUnikeyNT::TWndInfo CUnikeyNT::GetInfoByWindowHandle(const HWND windowHandle)
+CUnikeyNT::TWndInfo CUnikeyNT::GetInfoByWindowHandle(const HWND hWnd)
 {
   std::unique_ptr<TCHAR[]> p(new TCHAR[MAXBYTE]);
 
-  DWORD PID = 0;
-  GetWindowThreadProcessId(windowHandle, &PID);
-  if (PID != 0)
+  DWORD process_id = 0;
+  GetWindowThreadProcessId(hWnd, &process_id);
+  if (process_id != 0)
   {
-    auto hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, PID);
+    auto hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_id);
     if (hProcess != 0 && hProcess != INVALID_HANDLE_VALUE)
     {
       ZeroMemory(p.get(), MAXBYTE*sizeof(TCHAR));
@@ -224,11 +267,11 @@ CUnikeyNT::TWndInfo CUnikeyNT::GetInfoByWindowHandle(const HWND windowHandle)
   std::tstring processName(std::move(p.get()));
 
   ZeroMemory(p.get(), MAXBYTE*sizeof(TCHAR));
-  GetWindowText(windowHandle, LPTSTR(p.get()), MAXBYTE);
+  GetWindowText(hWnd, LPTSTR(p.get()), MAXBYTE);
   std::tstring windowName(std::move(p.get()));
 
   ZeroMemory(p.get(), MAXBYTE*sizeof(TCHAR));
-  GetClassName(windowHandle, LPTSTR(p.get()), MAXBYTE);
+  GetClassName(hWnd, LPTSTR(p.get()), MAXBYTE);
   std::tstring windowClass(std::move(p.get()));
 
   auto s = vu::trim_string(windowClass);
@@ -242,24 +285,22 @@ CUnikeyNT::TWndInfo CUnikeyNT::GetInfoByWindowHandle(const HWND windowHandle)
   return std::make_tuple(processName, windowName, windowClass);
 }
 
-CUnikeyNT::eMode CUnikeyNT::DetermineByWindowHandle(const HWND windowHandle, bool trimLR, bool justContain)
+CUnikeyNT::eMode CUnikeyNT::DetermineByWindowHandle(const HWND hWnd)
 {
   std::tstring processName(_T("")), windowName(_T("")), windowClass(_T(""));
 
-  std::tie(processName, windowName, windowClass) = this->GetInfoByWindowHandle(windowHandle);
+  std::tie(processName, windowName, windowClass) = this->GetInfoByWindowHandle(hWnd);
 
-  return this->Determine(processName, windowName, windowClass, trimLR, justContain);
+  return this->Determine(processName, windowName, windowClass);
 }
 
 CUnikeyNT::eMode CUnikeyNT::Determine(
   const std::tstring& processName,
   const std::tstring& windowName,
-  const std::tstring& windowClass,
-  bool trimLR,
-  bool justContain
+  const std::tstring& windowClass
 )
 {
-  eMode result = eMode::MODE_COUNT;
+  eMode result = eMode::MODE_NA;
 
   if (m_FilterList.empty()) return result;
 
@@ -284,35 +325,16 @@ CUnikeyNT::eMode CUnikeyNT::Determine(
 
     for (auto& e : section.second)
     {
-      if (this->CompareString(e.first, arg, trimLR, justContain))
+      auto v1 = vu::trim_string_W(arg);
+      auto v2 = vu::trim_string_W(e.first);
+      if (vu::contains_string_W(v1, v2, true))
       {
         result = e.second;
         break;
       }
     }
 
-    if (result != eMode::MODE_COUNT) break;
-  }
-
-  return result;
-}
-
-bool CUnikeyNT::CompareString(const std::tstring& s1, const std::tstring& s2, bool trimLR, bool justContain)
-{
-  bool result = false;
-
-  auto _s1 = (trimLR ? vu::trim_string(s1) : s1);
-  auto _s2 = (trimLR ? vu::trim_string(s2) : s2);
-
-  if (_s1.length() == 0 || _s2.length() == 0) return result;
-
-  if (justContain)
-  {
-    result = (_s1.find(_s2) != std::tstring::npos || _s2.find(_s1) != std::tstring::npos);
-  } 
-  else
-  {
-    result = (_s1 == _s2);
+    if (result != eMode::MODE_NA) break;
   }
 
   return result;
